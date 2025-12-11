@@ -18,9 +18,6 @@ git clone git@github.com:dafer238/dafer-nvim.git ~/.config/nvim
 git clone -b slim git@github.com:dafer238/dafer-nvim.git ~/.config/nvim
 ```
 
-## Custom landing page using 'alpha-nvim'
-![Dashboard view](images/landing_page.png)
-
 ## 'blink-cmp' for blazingly fast code completion and suggestions
 ![blink-cmp](images/blink_cmp.png)
 
@@ -33,7 +30,8 @@ git clone -b slim git@github.com:dafer238/dafer-nvim.git ~/.config/nvim
 ## Matching colorscheme in all statuslines (Gruvbox Material)
 ![Gruvbox Material theme](images/neovim.png)
 
-## Running a Rust project by pressing `<leader>r`
+## Running projects or single files by pressing `<leader>r`
+#### Python, C, C++, Lua, Rust and Zig supported, both in Linux and Windows. 
 ![Convenient mappings to run and compile projects](images/nvim_run.png)
 
 ## Some utils embedded (Lazygit)
