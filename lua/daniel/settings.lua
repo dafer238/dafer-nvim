@@ -3,6 +3,7 @@
 vim.g.have_nerd_font = true
 
 vim.opt.cursorline = true
+vim.opt.guicursor = "a:block"
 
 vim.opt.nu = true
 vim.opt.relativenumber = false
