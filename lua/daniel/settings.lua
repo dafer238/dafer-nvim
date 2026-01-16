@@ -3,7 +3,12 @@
 vim.g.have_nerd_font = true
 
 vim.opt.cursorline = true
-vim.opt.guicursor = "a:block"
+vim.opt.guicursor = {
+    "n-v-c:block", -- normal, visual, command: solid block
+    "i:block-blinkwait700-blinkoff400-blinkon250",
+    "r-cr:hor20",  -- replace modes
+    "o:hor50",
+}
 
 vim.opt.nu = true
 vim.opt.relativenumber = false
