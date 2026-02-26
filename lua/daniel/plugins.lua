@@ -142,4 +142,12 @@ require("lazy").setup({
             require('daniel.theme').setup()
         end,
     },
+    -- Rust crates
+    {
+        'saecki/crates.nvim',
+        tag = 'stable',
+        config = function()
+            require('crates').setup()
+        end,
+    }
 })
