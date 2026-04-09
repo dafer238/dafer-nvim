@@ -1,6 +1,6 @@
 -- ~/.config/nvim/lua/daniel/blink_cmp.lua
 
-return {
+require('blink.cmp').setup({
     keymap = { preset = 'super-tab' },
     appearance = {
         nerd_font_variant = 'mono'
@@ -12,13 +12,11 @@ return {
         completion = { menu = { auto_show = true } },
     },
     completion = {
-        keyword = { range = 'prefix' }, -- Check if prefix better
+        keyword = { range = 'prefix' },
         list = {
             selection = { preselect = true, auto_insert = false } },
 
-        -- Insert completion item on selection, don't select by default
         menu = {
-            -- nvim-cmp style menu
             draw = {
                 treesitter = { 'lsp' },
                 columns = {
@@ -29,7 +27,6 @@ return {
             border = 'rounded',
             scrollbar = false,
         },
-        -- Show documentation when selecting a completion item
         documentation = {
             auto_show = true,
             auto_show_delay_ms = 500,
@@ -37,11 +34,9 @@ return {
             window = { border = 'rounded' }
         },
 
-        -- Display a preview of the selected item on the current line
         ghost_text = { enabled = false },
     },
     sources = {
         default = { 'lsp', 'path', 'snippets', 'buffer' },
     },
-    -- opts_extend = {"sources.default"}
-}
+})

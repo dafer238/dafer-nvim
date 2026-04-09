@@ -34,19 +34,6 @@ fzf.setup({
 
     fzf_opts = {
     },
-    colors = {
-        fg = "#cdd6f4",      -- Catppuccin text color
-        bg = "#1e1e2e",      -- Catppuccin base background
-        hl = "#f5c2e7",      -- Catppuccin pink highlight
-        ['fg+'] = "#cdd6f4", -- Catppuccin brighter text
-        ['bg+'] = "#302d41", -- Catppuccin surface color
-        ['hl+'] = "#f38ba8", -- Catppuccin red highlight
-        info = "#a6e3a1",    -- Catppuccin green for info
-        border = "#89b4fa",  -- Catppuccin blue for borders
-        prompt = "#f5c2e7",  -- Catppuccin pink for prompt text
-        pointer = "#f38ba8", -- Catppuccin red for the pointer
-        marker = "#f9e2af",  -- Catppuccin yellow for markers
-    },
 })
 
 -- Helper function for custom directory search

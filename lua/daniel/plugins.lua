@@ -1,153 +1,74 @@
 -- ~/.config/nvim/lua/daniel/plugins.lua
 
-require("lazy").setup({
-    -- **Plugin Manager**
-    { "folke/lazy.nvim" },
-    -- **LSP and Tooling Management**
-    {
-        "mason-org/mason.nvim",
-        dependencies = {
-            "mason-org/mason-lspconfig.nvim",
-        },
-        config = function() require("daniel.mason") end,
-    },
-    {
-        'saghen/blink.cmp',
-        version = '*',
-
-        -- Load the configuration from the external file
-        opts = require("daniel.blink_cmp"),
-    },
-    -- Debugger Adapter Protocols
-    { 'mfussenegger/nvim-dap' },
-    { "rcarriga/nvim-dap-ui", dependencies = { "mfussenegger/nvim-dap", "nvim-neotest/nvim-nio" } },
-    -- **Git integration**
-    {
-        "lewis6991/gitsigns.nvim",
-        event = { "BufReadPre", "BufNewFile" },
-        config = function() require("gitsigns").setup() end,
-    },
-    -- **LaTeX support**
-    {
-        "lervag/vimtex",
-        ft = { "tex", "plaintex" }, -- Only load for tex files
-    },
-    -- **Treesitter**
-    {
-        "nvim-treesitter/nvim-treesitter",
-        build = ":TSUpdate",
-        config = function() require("daniel.treesitter") end,
-    },
-    -- **UI Enhancements**
-    {
-        "windwp/nvim-autopairs",
-        event = "InsertEnter",
-        config = true,
-        opts = {
-            map_bs = false,
-        },
-    },
-    {
-        "lukas-reineke/indent-blankline.nvim",
-        event = { "BufReadPre", "BufNewFile" },
-        config = function()
-            require("ibl").setup({
-                indent = {
-                    char = "▏", -- Use a thin line character
-                },
-                scope = { enabled = false }
-            })
-        end
-    },
-    {
-        "akinsho/toggleterm.nvim",
-        cmd = { "ToggleTerm", "TermExec" },
-        keys = {
-            { "<C-\\>", "<cmd>ToggleTerm<cr>", desc = "Toggle terminal" }
-        },
-        config = function() require("toggleterm").setup() end,
-    },
-    {
-        'petertriho/nvim-scrollbar',
-        config = function()
-            require("scrollbar").setup({
-                handle = {
-                    blend = 20,
-                    color = "#504945",
-                },
-                handlers = { gitsigns = true }
-            })
-        end
-    },
-    {
-        "folke/noice.nvim",
-        event = "VeryLazy",
-        dependencies = {
-            "MunifTanjim/nui.nvim",
-            {
-                "rcarriga/nvim-notify",
-                opts = {
-                    top_down = false,
-                },
-            },
-            "stevearc/dressing.nvim",
-        },
-        config = function() require("daniel.noice") end,
-    },
-    {
-        "jake-stewart/multicursor.nvim",
-        branch = '1.0',
-        config = function() require("daniel.multicursor").setup() end,
-    },
-    {
-        "ibhagwan/fzf-lua",
-        -- optional for icon support
-        dependencies = { "nvim-tree/nvim-web-devicons" },
-        config = function() require("daniel.fzf_lua") end,
-    },
-    {
-        "kyazdani42/nvim-tree.lua",
-        dependencies = { "kyazdani42/nvim-web-devicons" },
-        config = function() require("daniel.tree") end,
-    },
-    {
-        "folke/which-key.nvim",
-        config = function() require("which-key").setup({ preset = 'modern' }) end,
-    },
-    {
-        "nvim-lualine/lualine.nvim",
-        dependencies = { "kyazdani42/nvim-web-devicons" },
-        config = function() require("daniel.statusbar") end,
-    },
-    -- **Undo Tree**
-    {
-        "mbbill/undotree",
-        config = function() require("daniel.undotree") end,
-    },
-
-    -- **Commenting**
-    {
-        "folke/todo-comments.nvim",
-        dependencies = { "nvim-lua/plenary.nvim" },
-        opts = {}
-    },
-    -- **Themes**
-    {
-        -- "catppuccin/nvim",
-        -- "rebelot/kanagawa.nvim",
-        "sainnhe/gruvbox-material",
-        lazy = false,
-        priority = 1000,
-        config = function()
-            require('daniel.theme').setup()
-        end,
-    },
+-- Install and load all plugins via Neovim 0.12 builtin vim.pack
+vim.pack.add({
+    -- LSP server installer
+    'https://github.com/mason-org/mason.nvim',
+    -- Completion
+    { src = 'https://github.com/saghen/blink.cmp', version = vim.version.range('*') },
+    -- Debugger
+    'https://github.com/mfussenegger/nvim-dap',
+    'https://github.com/nvim-neotest/nvim-nio',
+    'https://github.com/rcarriga/nvim-dap-ui',
+    -- Git integration
+    'https://github.com/lewis6991/gitsigns.nvim',
+    -- LaTeX support
+    'https://github.com/lervag/vimtex',
+    -- Treesitter (parser installation for non-bundled languages)
+    'https://github.com/nvim-treesitter/nvim-treesitter',
+    -- UI Enhancements
+    'https://github.com/windwp/nvim-autopairs',
+    'https://github.com/lukas-reineke/indent-blankline.nvim',
+    'https://github.com/petertriho/nvim-scrollbar',
+    { src = 'https://github.com/jake-stewart/multicursor.nvim', version = '1.0' },
+    -- Fuzzy finder
+    'https://github.com/nvim-tree/nvim-web-devicons',
+    'https://github.com/ibhagwan/fzf-lua',
+    -- File tree
+    'https://github.com/kyazdani42/nvim-tree.lua',
+    -- Keymap hints
+    'https://github.com/folke/which-key.nvim',
+    -- Statusline
+    'https://github.com/nvim-lualine/lualine.nvim',
+    -- Undo tree
+    'https://github.com/mbbill/undotree',
+    -- TODO highlighting
+    'https://github.com/nvim-lua/plenary.nvim',
+    'https://github.com/folke/todo-comments.nvim',
+    -- Theme
+    'https://github.com/sainnhe/gruvbox-material',
     -- Rust crates
-    {
-        'saecki/crates.nvim',
-        tag = 'stable',
-        config = function()
-            require('crates').setup()
-        end,
-    }
+    { src = 'https://github.com/saecki/crates.nvim', version = 'stable' },
 })
+
+-- Run :TSUpdate when treesitter plugin is updated
+vim.api.nvim_create_autocmd('User', {
+    pattern = 'PackChanged',
+    callback = function()
+        vim.cmd('TSUpdate')
+    end,
+})
+
+-- Configure plugins after loading
+require("daniel.mason")
+require("daniel.treesitter")
+require("daniel.blink_cmp")    -- blink.cmp uses opts, configure separately
+require("gitsigns").setup()
+require("nvim-autopairs").setup({ map_bs = false })
+require("ibl").setup({
+    indent = { char = "▏" },
+    scope = { enabled = false },
+})
+require("scrollbar").setup({
+    handle = { blend = 20, color = "#504945" },
+    handlers = { gitsigns = true },
+})
+require("daniel.multicursor").setup()
+require("daniel.fzf_lua")
+require("daniel.tree")
+require("which-key").setup({ preset = 'modern' })
+require("daniel.statusbar")
+require("daniel.undotree")
+require("todo-comments").setup({})
+require('daniel.theme').setup()
+require('crates').setup()
