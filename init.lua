@@ -33,10 +33,8 @@ require('daniel.diagnostics')
 require('daniel.lspconfig')
 require('daniel.run')
 require('daniel.debug')
+require('daniel.ui')
 require("daniel.mappings")
-
--- Enable Neovim 0.12 experimental UI (replaces noice.nvim)
-require('vim._extui').enable({})
 
 -- Configure LSP hover and signature help borders
 vim.lsp.buf.hover = (function(original)
