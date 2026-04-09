@@ -124,17 +124,17 @@ vim.keymap.set("v", "<leader>cu", crates.update_crates, {
     desc = "Crates: update selected crates",
 })
 
-vim.keymap.set("n", "<leader>ca", crates.update_all_crates, {
+vim.keymap.set("n", "<leader>cU", crates.update_all_crates, {
     silent = true,
     desc = "Crates: update all crates",
 })
 
-vim.keymap.set("n", "<leader>cU", crates.upgrade_crate, {
+vim.keymap.set("n", "<leader>cP", crates.upgrade_crate, {
     silent = true,
     desc = "Crates: upgrade crate (breaking)",
 })
 
-vim.keymap.set("v", "<leader>cU", crates.upgrade_crates, {
+vim.keymap.set("v", "<leader>cP", crates.upgrade_crates, {
     silent = true,
     desc = "Crates: upgrade selected crates",
 })
