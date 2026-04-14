@@ -30,23 +30,24 @@ if vim.lsp.config and vim.lsp.enable then
     })
 
     vim.lsp.config('rust_analyzer', {
-        cmd = { 'rust-analyzer' }, -- ensure rust-analyzer is installed and in PATH
+        cmd = { 'rust-analyzer' },
         filetypes = { 'rust' },
         root_markers = { 'Cargo.toml', 'rust-project.json', '.git' },
         single_file_support = true,
-
         settings = {
             ['rust-analyzer'] = {
                 cargo = { allFeatures = true },
                 procMacro = { enable = true },
-                checkOnSave = { command = 'clippy' },
+                check = { command = "clippy" },
+                diagnostics = { enable = true },
             },
         },
-        vim.lsp.config('marksman', {
-            cmd = { 'marksman', 'server' },
-            filetypes = { 'markdown', 'markdown.mdx' },
-            root_markers = { '.marksman.toml', '.git' },
-        })
+    })
+
+    vim.lsp.config('marksman', {
+        cmd = { 'marksman', 'server' },
+        filetypes = { 'markdown', 'markdown.mdx' },
+        root_markers = { '.marksman.toml', '.git' },
     })
 
     vim.lsp.config('clangd', {
@@ -65,25 +66,6 @@ if vim.lsp.config and vim.lsp.enable then
         cmd = { 'texlab' },
         filetypes = { 'tex', 'plaintex', 'bib' },
         root_markers = { '.latexmkrc', '.texlabroot', 'texlabroot', 'Tectonic.toml', '.git' },
-    })
-
-    vim.lsp.config('rust_analyzer', {
-        cmd = { 'rust-analyzer' },
-        filetypes = { 'rust' },
-        root_markers = { 'Cargo.toml', 'rust-project.json', '.git' },
-        settings = {
-            ['rust-analyzer'] = {
-                cargo = {
-                    allFeatures = true,
-                },
-                check = {
-                    command = "clippy",
-                },
-                diagnostics = {
-                    enable = true,
-                },
-            },
-        },
     })
 
     -- Enable all configured servers

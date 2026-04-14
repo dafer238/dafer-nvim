@@ -1,5 +1,72 @@
 -- ~/.config/nvim/lua/daniel/run.lua
 
+-- Native floating terminal helper (replaces toggleterm)
+local function run_in_floating_terminal(cmd, wd)
+    local width = math.floor(vim.o.columns * 0.8)
+    local height = math.floor(vim.o.lines * 0.8)
+    local buf = vim.api.nvim_create_buf(false, true)
+    local win = vim.api.nvim_open_win(buf, true, {
+        relative = 'editor',
+        width = width,
+        height = height,
+        col = math.floor((vim.o.columns - width) / 2),
+        row = math.floor((vim.o.lines - height) / 2),
+        style = 'minimal',
+        border = 'rounded',
+    })
+    vim.wo[win].winblend = 10
+
+    if wd then
+        if vim.fn.has('win32') == 1 then
+            cmd = 'cd /d "' .. wd .. '" && ' .. cmd
+        else
+            cmd = 'cd "' .. wd .. '" && ' .. cmd
+        end
+    end
+    vim.fn.termopen(cmd, {
+        on_exit = function()
+            -- Keep buffer open so user can read output (close_on_exit = false equivalent)
+        end,
+    })
+    vim.cmd('startinsert')
+end
+
+-- Toggleable floating terminal (replaces <C-\> ToggleTerm)
+local toggle_term_buf = nil
+local toggle_term_win = nil
+
+local function toggle_floating_terminal()
+    if toggle_term_win and vim.api.nvim_win_is_valid(toggle_term_win) then
+        vim.api.nvim_win_hide(toggle_term_win)
+        toggle_term_win = nil
+        return
+    end
+
+    local width = math.floor(vim.o.columns * 0.8)
+    local height = math.floor(vim.o.lines * 0.8)
+    local opts = {
+        relative = 'editor',
+        width = width,
+        height = height,
+        col = math.floor((vim.o.columns - width) / 2),
+        row = math.floor((vim.o.lines - height) / 2),
+        style = 'minimal',
+        border = 'rounded',
+    }
+
+    if toggle_term_buf and vim.api.nvim_buf_is_valid(toggle_term_buf) then
+        toggle_term_win = vim.api.nvim_open_win(toggle_term_buf, true, opts)
+        vim.cmd('startinsert')
+    else
+        toggle_term_buf = vim.api.nvim_create_buf(false, true)
+        toggle_term_win = vim.api.nvim_open_win(toggle_term_buf, true, opts)
+        vim.fn.termopen(vim.o.shell)
+        vim.cmd('startinsert')
+    end
+end
+
+vim.keymap.set({ 'n', 't' }, '<C-\\>', toggle_floating_terminal, { desc = "Toggle terminal", silent = true })
+
 local run_script = function(rust_mode, zig_mode)
     local current_cwd = vim.fn.getcwd()
     local filepath = vim.fn.expand("%:p")   -- Full path
@@ -10,27 +77,6 @@ local run_script = function(rust_mode, zig_mode)
     local is_rust_project = vim.fn.filereadable(current_cwd .. "/Cargo.toml") == 1
     local is_zig_project = vim.fn.filereadable(current_cwd .. "/build.zig") == 1
     local is_c_project = vim.fn.filereadable(current_cwd .. "/Makefile") == 1
-
-    -- Floating terminal helper
-    local Terminal = require("toggleterm.terminal").Terminal
-    local function run_in_floating_terminal(cmd, wd)
-        local term = Terminal:new({
-            cmd = cmd,
-            dir = wd,
-            direction = "float",
-            hidden = true,
-            close_on_exit = false,
-            float_opts = {
-                border = "rounded",
-                winblend = 10,
-            },
-            highlights = {
-                Normal = { guibg = "NONE" },
-                NormalNC = { guibg = "NONE" },
-            },
-        })
-        term:toggle()
-    end
 
     -- Get first target from Makefile (excluding .PHONY)
     local function get_makefile_target()
