@@ -67,12 +67,28 @@ end
 
 vim.keymap.set({ 'n', 't' }, '<C-\\>', toggle_floating_terminal, { desc = "Toggle terminal", silent = true })
 
+-- Generates a safe display echo command (shows >> prefix, avoids redirect on cmd.exe)
+local function cmd_echo(label)
+    if vim.fn.has('win32') == 1 then
+        local shell = vim.o.shell:lower()
+        if not (shell:find("powershell") or shell:find("pwsh")) then
+            -- cmd.exe: escape shell metacharacters so they display literally
+            local escaped = label:gsub("&&", "^&^&"):gsub(">", "^>"):gsub("<", "^<"):gsub("|", "^|")
+            return "echo ^>^> " .. escaped
+        end
+    end
+    return "echo '>> " .. label .. "\\n'"
+end
+
 local run_script = function(rust_mode, zig_mode)
     local current_cwd = vim.fn.getcwd()
     local filepath = vim.fn.expand("%:p")   -- Full path
     local filedir = vim.fn.expand("%:p:h")
     local filename = vim.fn.expand("%:t:r") -- Filename without extension
+    local filename_ext = vim.fn.expand("%:t") -- Filename with extension
     local filetype = vim.bo.filetype
+    local is_check = (rust_mode == 'check')
+    local is_win = vim.fn.has('win32') == 1
 
     local is_rust_project = vim.fn.filereadable(current_cwd .. "/Cargo.toml") == 1
     local is_zig_project = vim.fn.filereadable(current_cwd .. "/build.zig") == 1
@@ -94,31 +110,33 @@ local run_script = function(rust_mode, zig_mode)
     -- Compile single C/C++ file with clang/gcc
     local function compile_single_c_file()
         local compiler = filetype == "c" and "clang" or "clang++"
-        local output = filename .. "_out"
-        local cmd_string = compiler .. " " .. filepath .. " -o " .. output .. " && ./" .. output
-
-        -- Save before compiling
         vim.cmd("silent write")
 
-        local full_cmd = "echo '>> " .. cmd_string .. "\\n' && " .. cmd_string
-        run_in_floating_terminal(full_cmd, filedir)
+        local display, run_cmd
+        if is_check then
+            display  = compiler .. " -fsyntax-only " .. filename_ext
+            run_cmd  = compiler .. ' -fsyntax-only "' .. filename_ext .. '"'
+        else
+            local output = filename .. "_out" .. (is_win and ".exe" or "")
+            local run_output = (is_win and ".\\" or "./") .. output
+            display  = compiler .. " " .. filename_ext .. " -o " .. output .. " && " .. run_output
+            run_cmd  = compiler .. ' "' .. filename_ext .. '" -o ' .. output .. " && " .. run_output
+        end
+
+        run_in_floating_terminal(cmd_echo(display) .. " && " .. run_cmd, filedir)
     end
 
     -- Prompt user for C/C++ compilation choice
     local function c_compile_choice()
+        local action = is_check and "Check" or "Compile"
         vim.ui.select({ "Project (Makefile)", "Single file" }, {
-            prompt = "Compile C/C++ project or single file?",
+            prompt = action .. " C/C++ project or single file?",
             format_item = function(item) return item end,
         }, function(choice)
             if choice == "Project (Makefile)" then
-                -- Use existing Makefile logic
                 local target = get_makefile_target()
-                local cmd
-                if target then
-                    cmd = "echo '>> make " .. target .. " (" .. current_cwd .. ")\\n' && make " .. target
-                else
-                    cmd = "echo '>> make (" .. current_cwd .. ")\\n' && make"
-                end
+                local make_cmd = target and ("make " .. target) or "make"
+                local cmd = cmd_echo(make_cmd .. " (" .. current_cwd .. ")") .. " && " .. make_cmd
                 run_in_floating_terminal(cmd, current_cwd)
             elseif choice == "Single file" then
                 compile_single_c_file()
@@ -230,10 +248,8 @@ local run_script = function(rust_mode, zig_mode)
         end
 
         if auto_bin then
-            local cmd = string.format(
-                "echo '>> cargo %s --bin %s (%s)\\n' && cargo %s --bin %s",
-                rust_mode, auto_bin, current_cwd, rust_mode, auto_bin
-            )
+            local bin_cmd = string.format("cargo %s --bin %s", rust_mode, auto_bin)
+            local cmd = cmd_echo(bin_cmd .. " (" .. current_cwd .. ")") .. " && " .. bin_cmd
             run_in_floating_terminal(cmd, current_cwd)
         elseif #bins > 1 then
             vim.ui.select(bins, {
@@ -241,17 +257,16 @@ local run_script = function(rust_mode, zig_mode)
                 format_item = function(item) return item end,
             }, function(choice)
                 if choice then
-                    local cmd = string.format(
-                        "echo '>> cargo %s --bin %s (%s)\\n' && cargo %s --bin %s",
-                        rust_mode, choice, current_cwd, rust_mode, choice
-                    )
+                    local bin_cmd = string.format("cargo %s --bin %s", rust_mode, choice)
+                    local cmd = cmd_echo(bin_cmd .. " (" .. current_cwd .. ")") .. " && " .. bin_cmd
                     run_in_floating_terminal(cmd, current_cwd)
                 else
                     vim.notify("Cancelled Rust run.", vim.log.levels.INFO)
                 end
             end)
         else
-            local cmd = "echo '>> cargo " .. rust_mode .. " (" .. current_cwd .. ")\\n' && cargo " .. rust_mode
+            local cargo_cmd = "cargo " .. rust_mode
+            local cmd = cmd_echo(cargo_cmd .. " (" .. current_cwd .. ")") .. " && " .. cargo_cmd
             run_in_floating_terminal(cmd, current_cwd)
         end
     end
@@ -275,20 +290,28 @@ local run_script = function(rust_mode, zig_mode)
     if not ran and filepath ~= "" and vim.bo.buftype == "" then
         vim.cmd("silent write") -- Save file
 
-        local cmd_string, cmd
+        local display, run_cmd
         if filetype == "python" then
-            cmd_string = "python " .. filepath
+            if is_check then
+                display  = "ruff check " .. filename_ext
+                run_cmd  = 'ruff check "' .. filename_ext .. '"'
+            else
+                display  = "python " .. filename_ext
+                run_cmd  = 'python "' .. filename_ext .. '"'
+            end
         elseif filetype == "lua" then
-            cmd_string = "lua " .. filepath
+            display = "lua " .. filename_ext
+            run_cmd = 'lua "' .. filename_ext .. '"'
         elseif filetype == "javascript" then
-            cmd_string = "node " .. filepath
+            display = "node " .. filename_ext
+            run_cmd = 'node "' .. filename_ext .. '"'
         elseif filetype == "typescript" then
-            cmd_string = "ts-node " .. filepath
+            display = "ts-node " .. filename_ext
+            run_cmd = 'ts-node "' .. filename_ext .. '"'
         end
 
-        if cmd_string then
-            cmd = "echo '>> " .. cmd_string .. "\n' && " .. cmd_string
-            run_in_floating_terminal(cmd, filedir)
+        if run_cmd then
+            run_in_floating_terminal(cmd_echo(display) .. " && " .. run_cmd, filedir)
             ran = true
         end
     end
@@ -299,17 +322,14 @@ local run_script = function(rust_mode, zig_mode)
             run_rust_project()
             ran = true
         elseif is_zig_project then
-            local cmd = "echo '>> zig " .. zig_mode .. " (" .. current_cwd .. ")\\n' && zig " .. zig_mode
+            local zig_cmd = "zig " .. zig_mode
+            local cmd = cmd_echo(zig_cmd .. " (" .. current_cwd .. ")") .. " && " .. zig_cmd
             run_in_floating_terminal(cmd, current_cwd)
             ran = true
         elseif is_c_project then
             local target = get_makefile_target()
-            local cmd
-            if target then
-                cmd = "echo '>> make " .. target .. " (" .. current_cwd .. ")\\n' && make " .. target
-            else
-                cmd = "echo '>> make (" .. current_cwd .. ")\\n' && make"
-            end
+            local make_cmd = target and ("make " .. target) or "make"
+            local cmd = cmd_echo(make_cmd .. " (" .. current_cwd .. ")") .. " && " .. make_cmd
             run_in_floating_terminal(cmd, current_cwd)
             ran = true
         end

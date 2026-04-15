@@ -36,19 +36,3 @@ require('daniel.debug')
 require('daniel.ui')
 require("daniel.mappings")
 
--- Configure LSP hover and signature help borders
-vim.lsp.buf.hover = (function(original)
-    return function(opts)
-        opts = opts or {}
-        opts.border = opts.border or 'rounded'
-        return original(opts)
-    end
-end)(vim.lsp.buf.hover)
-
-vim.lsp.buf.signature_help = (function(original)
-    return function(opts)
-        opts = opts or {}
-        opts.border = opts.border or 'rounded'
-        return original(opts)
-    end
-end)(vim.lsp.buf.signature_help)

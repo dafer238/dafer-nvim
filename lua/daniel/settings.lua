@@ -55,6 +55,31 @@ vim.keymap.set("n", "<leader>ww", function()
     end
 end, { desc = "Toggle line wrapping" })
 
+-- Configure LSP hover and signature help borders
+vim.lsp.buf.hover = (function(original)
+    return function(opts)
+        opts = opts or {}
+        opts.border = opts.border or 'rounded'
+        return original(opts)
+    end
+end)(vim.lsp.buf.hover)
+
+vim.lsp.buf.signature_help = (function(original)
+    return function(opts)
+        opts = opts or {}
+        opts.border = opts.border or 'rounded'
+        return original(opts)
+    end
+end)(vim.lsp.buf.signature_help)
+
+-- User commands for vim.pack
+vim.api.nvim_create_user_command("PackUpdate", function()
+    vim.pack.update()
+end, { desc = "Update installed packages" })
+
+vim.api.nvim_create_user_command("PackSync", function()
+    vim.pack.sync()
+end, { desc = "Install missing and update packages" })
 
 -- Folding configuration
 vim.o.foldenable = true
