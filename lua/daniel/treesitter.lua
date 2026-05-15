@@ -1,22 +1,10 @@
 -- ~/.config/nvim/lua/daniel/treesitter.lua
 
--- Install non-bundled parsers (c, lua, vim, vimdoc, query, markdown, markdown_inline are bundled with Neovim 0.12)
-require('nvim-treesitter').install {
-    "bash",
-    "diff",
-    "html",
-    "luadoc",
-    "python",
-    "rust",
-    "javascript",
-    "typescript",
-    "json",
-    "zig",
-    "regex",
-    "gitignore",
-    "toml",
-    "latex",
-}
+-- Neovim 0.12 bundles parsers for: bash, c, diff, html, javascript, json, lua,
+-- luadoc, markdown, markdown_inline, python, query, regex, typescript, vim, vimdoc.
+-- Non-bundled parsers (zig, gitignore, toml, latex, rust, etc.) will silently skip
+-- treesitter highlighting. Install them via the tree-sitter CLI if needed:
+--   tree-sitter build --output ~/.local/share/nvim/parser/<lang>.so
 
 -- Enable treesitter highlighting via builtin API
 vim.api.nvim_create_autocmd('FileType', {
@@ -27,6 +15,6 @@ vim.api.nvim_create_autocmd('FileType', {
         "zig", "regex", "gitignore", "toml", "latex", "tex",
     },
     callback = function()
-        vim.treesitter.start()
+        pcall(vim.treesitter.start)
     end,
 })

@@ -14,8 +14,6 @@ vim.pack.add({
     'https://github.com/lewis6991/gitsigns.nvim',
     -- LaTeX support
     'https://github.com/lervag/vimtex',
-    -- Treesitter (parser installation for non-bundled languages)
-    'https://github.com/nvim-treesitter/nvim-treesitter',
     -- UI Enhancements
     'https://github.com/windwp/nvim-autopairs',
     'https://github.com/lukas-reineke/indent-blankline.nvim',
@@ -39,14 +37,6 @@ vim.pack.add({
     'https://github.com/sainnhe/gruvbox-material',
     -- Rust crates
     { src = 'https://github.com/saecki/crates.nvim', version = 'stable' },
-})
-
--- Run :TSUpdate when treesitter plugin is updated
-vim.api.nvim_create_autocmd('User', {
-    pattern = 'PackChanged',
-    callback = function()
-        vim.cmd('TSUpdate')
-    end,
 })
 
 -- Configure plugins after loading
