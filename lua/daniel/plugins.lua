@@ -5,7 +5,7 @@ vim.pack.add({
     -- LSP server installer
     'https://github.com/mason-org/mason.nvim',
     -- Completion
-    { src = 'https://github.com/saghen/blink.cmp', version = vim.version.range('*') },
+    { src = 'https://github.com/saghen/blink.cmp',              version = vim.version.range('*') },
     -- Debugger
     'https://github.com/mfussenegger/nvim-dap',
     'https://github.com/nvim-neotest/nvim-nio',
@@ -17,7 +17,6 @@ vim.pack.add({
     -- UI Enhancements
     'https://github.com/windwp/nvim-autopairs',
     'https://github.com/lukas-reineke/indent-blankline.nvim',
-    'https://github.com/petertriho/nvim-scrollbar',
     { src = 'https://github.com/jake-stewart/multicursor.nvim', version = '1.0' },
     -- Fuzzy finder
     'https://github.com/nvim-tree/nvim-web-devicons',
@@ -42,16 +41,12 @@ vim.pack.add({
 -- Configure plugins after loading
 require("daniel.mason")
 require("daniel.treesitter")
-require("daniel.blink_cmp")    -- blink.cmp uses opts, configure separately
+require("daniel.blink_cmp") -- blink.cmp uses opts, configure separately
 require("gitsigns").setup()
 require("nvim-autopairs").setup({ map_bs = false })
 require("ibl").setup({
     indent = { char = "▏" },
     scope = { enabled = false },
-})
-require("scrollbar").setup({
-    handle = { blend = 20, color = "#504945" },
-    handlers = { gitsigns = true },
 })
 require("daniel.multicursor").setup()
 require("daniel.fzf_lua")
