@@ -39,7 +39,10 @@ vim.api.nvim_create_autocmd('FileType', {
         "bash", "sh", "c", "cpp", "css", "diff", "html", "json",
         "lua", "luadoc", "markdown", "markdown_inline", "python",
         "rust", "javascript", "typescript", "vim", "vimdoc", "query",
-        "zig", "regex", "gitignore", "toml", "latex", "tex",
+        "zig", "regex", "gitignore", "toml",
+        -- tex is left to vimtex's syntax on purpose: it marks commands, labels,
+        -- refs and cite keys as no-spell, which treesitter's latex queries do
+        -- not, and vimtex's motions/text objects rely on it.
     },
     callback = function()
         pcall(vim.treesitter.start)

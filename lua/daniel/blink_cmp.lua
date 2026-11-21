@@ -38,5 +38,10 @@ require('blink.cmp').setup({
     },
     sources = {
         default = { 'lsp', 'path', 'snippets', 'buffer' },
+        -- vimtex's omnifunc completes \cite{} keys from the .bib files the
+        -- document loads, plus labels, packages and glossary entries.
+        per_filetype = {
+            tex = { inherit_defaults = true, 'omni' },
+        },
     },
 })

@@ -108,7 +108,13 @@ vim.api.nvim_create_autocmd('LspAttach', {
     end
 })
 
-vim.opt.spelllang = "en_us"
+-- English (all regions, so "behaviour" is not flagged) + Spanish.
+-- Neovim ships only English; the first time a buffer needs Spanish it offers
+-- to download es.utf-8.spl into stdpath('data')/site/spell.
+vim.opt.spelllang = { "en", "es" }
+-- Words added with zg / zw live in this repo, so they sync between machines.
+-- (The compiled *.add.spl next to it is generated and gitignored.)
+vim.opt.spellfile = vim.fn.stdpath("config") .. "/spell/custom.utf-8.add"
 
 -- Enable spell checking for common text-based filetypes
 vim.api.nvim_create_autocmd("FileType", {
