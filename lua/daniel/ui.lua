@@ -62,7 +62,7 @@ vim.ui.select = function(items, opts, on_choice)
         end
         vim.api.nvim_buf_set_lines(buf, 0, -1, false, display)
         vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
-        vim.api.nvim_buf_add_highlight(buf, ns, 'PmenuSel', idx - 1, 0, -1)
+        vim.api.nvim_buf_set_extmark(buf, ns, idx - 1, 0, { end_col = #display[idx], hl_group = 'PmenuSel' })
         vim.api.nvim_set_option_value('modifiable', false, { buf = buf })
     end
 

@@ -77,10 +77,6 @@ vim.api.nvim_create_user_command("PackUpdate", function()
     vim.pack.update()
 end, { desc = "Update installed packages" })
 
-vim.api.nvim_create_user_command("PackSync", function()
-    vim.pack.sync()
-end, { desc = "Install missing and update packages" })
-
 -- Folding configuration
 vim.o.foldenable = true
 vim.o.foldlevel = 99

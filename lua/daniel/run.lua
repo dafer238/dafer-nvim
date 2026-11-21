@@ -23,7 +23,8 @@ local function run_in_floating_terminal(cmd, wd)
             cmd = 'cd "' .. wd .. '" && ' .. cmd
         end
     end
-    vim.fn.termopen(cmd, {
+    vim.fn.jobstart(cmd, {
+        term = true,
         on_exit = function()
             -- Keep buffer open so user can read output (close_on_exit = false equivalent)
         end,
@@ -60,7 +61,7 @@ local function toggle_floating_terminal()
     else
         toggle_term_buf = vim.api.nvim_create_buf(false, true)
         toggle_term_win = vim.api.nvim_open_win(toggle_term_buf, true, opts)
-        vim.fn.termopen(vim.o.shell)
+        vim.fn.jobstart(vim.o.shell, { term = true })
         vim.cmd('startinsert')
     end
 end
