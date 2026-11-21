@@ -1,13 +1,13 @@
 -- ~/.config/nvim/lua/daniel/undotree.lua
+-- Builtin undotree (Neovim 0.12): an opt package, loaded on first use.
+-- Layout mirrors mbbill/undotree's default: tree on the left, 30 columns wide,
+-- focus stays in the edited buffer.
+-- Moving the cursor inside the tree window previews (undoes to) that state.
 
--- Check the operating system
-if vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 then
-    -- If on Windows, set the DiffCommand to FC
-    vim.g.undotree_DiffCommand = "FC"
-else
-    -- If not Windows, don't set the DiffCommand
-    -- This block is intentionally left blank
-end
-
--- Toggle undo tree
-vim.keymap.set('n', '<leader>u', vim.cmd.UndotreeToggle, { desc = "Toggle undo tree" })
+vim.keymap.set('n', '<leader>u', function()
+    vim.cmd.packadd('nvim.undotree')
+    local was_open = require('undotree').open({ command = 'topleft 30vnew' })
+    if not was_open then
+        vim.cmd.wincmd('p') -- return focus to the edited buffer
+    end
+end, { desc = "Toggle undo tree" })

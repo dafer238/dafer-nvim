@@ -62,10 +62,60 @@ if vim.lsp.config and vim.lsp.enable then
         root_markers = { 'package.json', '.git' },
     })
 
+    -- Same texlab settings as the Zed config: build with latexmk on save,
+    -- forward search in sioyek after each build, chktex on open/save.
+    -- texlab does all of this server-side; the client only sends didSave.
     vim.lsp.config('texlab', {
         cmd = { 'texlab' },
         filetypes = { 'tex', 'plaintex', 'bib' },
         root_markers = { '.latexmkrc', '.texlabroot', 'texlabroot', 'Tectonic.toml', '.git' },
+        settings = {
+            texlab = {
+                build = {
+                    executable = 'latexmk',
+                    args = { '-interaction=nonstopmode', '-synctex=1', '%f' },
+                    onSave = true,
+                    forwardSearchAfter = true,
+                },
+                forwardSearch = {
+                    executable = 'sioyek',
+                    args = {
+                        '--reuse-window',
+                        '--forward-search-file', '%f',
+                        '--forward-search-line', '%l',
+                        '%p',
+                    },
+                },
+                chktex = {
+                    onOpenAndSave = true,
+                    onEdit = false,
+                },
+            },
+        },
+        on_attach = function(client, bufnr)
+            -- Manual build / forward search (texlab's custom LSP requests)
+            local function params()
+                return {
+                    textDocument = vim.lsp.util.make_text_document_params(bufnr),
+                    position = vim.lsp.util.make_position_params(0, client.offset_encoding).position,
+                }
+            end
+            vim.api.nvim_buf_create_user_command(bufnr, 'TexlabBuild', function()
+                client:request('textDocument/build', params(), function(err, result)
+                    if err then return vim.notify('texlab build: ' .. err.message, vim.log.levels.ERROR) end
+                    -- status: 0 success, 1 error, 2 failure, 3 cancelled
+                    local status = { [0] = 'success', 'error', 'failure', 'cancelled' }
+                    vim.notify('texlab build: ' .. (status[result.status] or tostring(result.status)))
+                end, bufnr)
+            end, { desc = 'Build the current LaTeX document' })
+            vim.api.nvim_buf_create_user_command(bufnr, 'TexlabForward', function()
+                client:request('textDocument/forwardSearch', params(), function(err)
+                    if err then vim.notify('texlab forward search: ' .. err.message, vim.log.levels.ERROR) end
+                end, bufnr)
+            end, { desc = 'Show the cursor position in sioyek' })
+            vim.keymap.set('n', '<leader>lb', '<cmd>TexlabBuild<CR>', { buffer = bufnr, desc = 'LaTeX: build' })
+            vim.keymap.set('n', '<leader>lf', '<cmd>TexlabForward<CR>', { buffer = bufnr, desc = 'LaTeX: forward search' })
+        end,
     })
 
     -- Enable all configured servers
