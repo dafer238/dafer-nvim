@@ -1,11 +1,12 @@
 -- ~/.config/nvim/lua/daniel/statusbar.lua
--- Native 'statusline' replicating the previous lualine layout:
+-- Native 'statusline', flat blocks (same sections as the old lualine layout):
 --   [mode] [branch diff lsp-progress] [diagnostics filename] ... [encoding filetype] [progress] [location]
 
 local M = {}
 
-local SEP = { left = '', right = '' }   -- section separators (powerline)
-local CSEP = { left = '', right = '' }  -- component separators
+-- Flat blocks: each section is ' text ' on its own background, sections sit
+-- flush against each other, and components inside a section are split by '│'.
+local CSEP = '│'
 
 local mode_names = {
     n = 'NORMAL', no = 'O-PENDING', nov = 'O-PENDING', noV = 'O-PENDING', ['no\22'] = 'O-PENDING',
@@ -68,11 +69,8 @@ local function define_highlights()
     for _, fam in ipairs({ 'normal', 'insert', 'visual', 'replace', 'command', 'terminal' }) do
         local bg = colors[fam]
         set(0, 'StlA_' .. fam, { fg = colors.a_fg, bg = bg, bold = true })
-        set(0, 'StlAB_' .. fam, { fg = bg, bg = colors.b_bg })  -- separator a -> b
-        set(0, 'StlAC_' .. fam, { fg = bg, bg = colors.c_bg })  -- separator a -> c (b empty)
     end
     set(0, 'StlB', { fg = colors.b_fg, bg = colors.b_bg })
-    set(0, 'StlBC', { fg = colors.b_bg, bg = colors.c_bg })    -- separator b -> c
     set(0, 'StlC', { fg = colors.c_fg, bg = colors.c_bg })
     set(0, 'StlInactive', { fg = colors.inactive_fg, bg = colors.c_bg })
     -- Coloured items inside sections (diff in b, diagnostics in c)
@@ -218,20 +216,14 @@ function M.render()
     local m = vim.api.nvim_get_mode().mode
     local fam = mode_family(m)
     local a = '%#StlA_' .. fam .. '# ' .. (mode_names[m] or m:upper()) .. ' '
-    local b = join({ branch(buf), diff(buf), esc(progress_text()) }, CSEP.left)
-    local c = join({ diagnostics(buf), filename(buf) }, CSEP.left)
-    local x = join({ encoding(buf), filetype(buf) }, CSEP.right)
+    local b = join({ branch(buf), diff(buf), esc(progress_text()) }, CSEP)
+    local c = join({ diagnostics(buf), filename(buf) }, CSEP)
+    local x = join({ encoding(buf), filetype(buf) }, CSEP)
     local y = progress(win, buf)
     local z = '%3l:%-2v'
 
-    local left
-    if b ~= '' then
-        left = a .. '%#StlAB_' .. fam .. '#' .. SEP.left .. '%#StlB# ' .. b .. ' %#StlBC#' .. SEP.left
-    else
-        left = a .. '%#StlAC_' .. fam .. '#' .. SEP.left -- section b empty: a -> c
-    end
-    local right = '%#StlBC#' .. SEP.right .. '%#StlB# ' .. y .. ' %#StlAB_' .. fam .. '#' .. SEP.right
-        .. '%#StlA_' .. fam .. '# ' .. z .. ' '
+    local left = a .. (b ~= '' and ('%#StlB# ' .. b .. ' ') or '')
+    local right = '%#StlB# ' .. y .. ' %#StlA_' .. fam .. '# ' .. z .. ' '
     return left .. '%#StlC# ' .. c .. '%=' .. x .. ' ' .. right
 end
 
