@@ -110,7 +110,32 @@ local function join(parts, sep)
     return table.concat(out, ' ' .. sep .. ' ')
 end
 
-local lsp_progress = ''
+-- LSP work-done progress, one entry per (client, token) while it is running.
+-- Tracked from the events themselves rather than vim.lsp.status(), which
+-- drains a shared ring buffer and only reports what arrived since last call.
+local lsp_tasks = {} ---@type table<string, {title:string?, message:string?, percentage:integer?, time:integer, done:boolean}>
+local STALE_MS = 30000 -- drop a task that sends nothing for this long (server never sent 'end')
+
+local function progress_text()
+    local now = vim.uv.now()
+    local parts = {}
+    for key, p in pairs(lsp_tasks) do
+        if now - p.time > STALE_MS then
+            lsp_tasks[key] = nil
+        else
+            local text = p.title or ''
+            if p.message and p.message ~= '' then
+                text = text ~= '' and (text .. ': ' .. p.message) or p.message
+            end
+            if p.percentage and not p.done then
+                text = string.format('%d%% ', p.percentage) .. text
+            end
+            parts[#parts + 1] = text
+        end
+    end
+    table.sort(parts)
+    return table.concat(parts, ', ')
+end
 
 local function branch(buf)
     local head = vim.b[buf].gitsigns_head
@@ -193,7 +218,7 @@ function M.render()
     local m = vim.api.nvim_get_mode().mode
     local fam = mode_family(m)
     local a = '%#StlA_' .. fam .. '# ' .. (mode_names[m] or m:upper()) .. ' '
-    local b = join({ branch(buf), diff(buf), esc(lsp_progress) }, CSEP.left)
+    local b = join({ branch(buf), diff(buf), esc(progress_text()) }, CSEP.left)
     local c = join({ diagnostics(buf), filename(buf) }, CSEP.left)
     local x = join({ encoding(buf), filetype(buf) }, CSEP.right)
     local y = progress(win, buf)
@@ -224,12 +249,33 @@ function M.setup()
     vim.api.nvim_create_autocmd('LspProgress', {
         group = group,
         callback = function(ev)
-            lsp_progress = vim.lsp.status()
-            if ev.match == 'end' then
+            local params = ev.data.params
+            local value = params.value
+            if type(value) ~= 'table' or not value.kind then return end
+            local key = ev.data.client_id .. ':' .. tostring(params.token)
+            local p = lsp_tasks[key] or {}
+            p.title = value.title or p.title
+            p.message = value.message or (value.kind ~= 'end' and p.message) or nil
+            p.percentage = value.percentage or p.percentage
+            p.time = vim.uv.now()
+            p.done = value.kind == 'end'
+            lsp_tasks[key] = p
+            if p.done then
+                -- Show the final message briefly, then remove the task
                 vim.defer_fn(function()
-                    lsp_progress = ''
+                    if lsp_tasks[key] == p then lsp_tasks[key] = nil end
                     vim.cmd.redrawstatus()
                 end, 1000)
+            end
+            vim.cmd.redrawstatus()
+        end,
+    })
+    vim.api.nvim_create_autocmd('LspDetach', {
+        group = group,
+        callback = function(ev)
+            local prefix = ev.data.client_id .. ':'
+            for key in pairs(lsp_tasks) do
+                if key:sub(1, #prefix) == prefix then lsp_tasks[key] = nil end
             end
             vim.cmd.redrawstatus()
         end,
