@@ -68,7 +68,7 @@ if vim.lsp.config and vim.lsp.enable then
     vim.lsp.config('texlab', {
         cmd = { 'texlab' },
         filetypes = { 'tex', 'plaintex', 'bib' },
-        root_markers = { '.latexmkrc', '.texlabroot', 'texlabroot', 'Tectonic.toml', '.git' },
+        root_markers = { { '.texlabroot', 'texlabroot', 'Tectonic.toml', '.latexmkrc', 'latexmkrc' }, '.git' },
         settings = {
             texlab = {
                 build = {
@@ -76,6 +76,9 @@ if vim.lsp.config and vim.lsp.enable then
                     args = { '-interaction=nonstopmode', '-synctex=1', '%f' },
                     onSave = true,
                     forwardSearchAfter = true,
+                    -- Use the .fls file latexmk writes to find every file the
+                    -- document really loads (\input via macros, \subimport, ...)
+                    useFileList = true,
                 },
                 forwardSearch = {
                     executable = 'sioyek',
