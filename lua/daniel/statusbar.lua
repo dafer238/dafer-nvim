@@ -206,7 +206,7 @@ end
 
 -- nvim-tree: quick info about the item under the cursor.
 --   file:      size · modified
---   directory: direct children · total size (computed in the background)
+--   directory: total size (computed in the background) · direct children
 --   link:      -> target
 -- A folder's total size needs a full recursive walk, which can be slow on big
 -- trees (and on Windows in general), so it runs asynchronously with libuv,
@@ -269,11 +269,11 @@ local function tree_dir_info(path)
     local count = 0
     local req = uv.fs_scandir(path)
     while req and uv.fs_scandir_next(req) do count = count + 1 end
-    local out = count .. (count == 1 and ' item' or ' items')
+    local items = count .. (count == 1 and ' item' or ' items')
 
     local c = dir_sizes[path]
     if c and c.size and uv.now() - c.time < CACHE_MS then
-        return out .. ' · ' .. (c.partial and '>=' or '') .. human(c.size)
+        return (c.partial and '>=' or '') .. human(c.size) .. ' · ' .. items
     end
     if not (c and c.pending) then
         dir_sizes[path] = { pending = true }
@@ -282,7 +282,7 @@ local function tree_dir_info(path)
             vim.cmd.redrawstatus()
         end))
     end
-    return out .. ' · …'
+    return '… · ' .. items
 end
 
 local function tree_node_info()
