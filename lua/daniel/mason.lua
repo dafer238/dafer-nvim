@@ -10,7 +10,7 @@ local ensure_installed = {
     ["rust-analyzer"]       = "rust-analyzer",       -- rust_analyzer
     ["marksman"]            = "marksman",            -- marksman
     ["clangd"]              = "clangd",              -- clangd
-    ["css-lsp"]             = "vscode-css-language-server", -- cssls
+    -- ["css-lsp"]             = "vscode-css-language-server", -- cssls
     ["texlab"]              = "texlab",              -- texlab
     ["ty"]                  = "ty",                  -- ty
     -- Not an LSP: nvim-treesitter (main) shells out to `tree-sitter build`
