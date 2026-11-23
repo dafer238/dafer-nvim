@@ -204,6 +204,103 @@ local function progress(win, buf)
     return string.format('%2d%%%%', math.floor(line / total * 100))
 end
 
+-- nvim-tree: quick info about the item under the cursor.
+--   file:      size · modified
+--   directory: direct children · total size (computed in the background)
+--   link:      -> target
+-- A folder's total size needs a full recursive walk, which can be slow on big
+-- trees (and on Windows in general), so it runs asynchronously with libuv,
+-- stops after MAX_WALK entries (shown as ">=") and is cached for CACHE_MS.
+local uv = vim.uv
+local MAX_WALK = 50000
+local CACHE_MS = 60000
+local dir_sizes = {} ---@type table<string, {size:integer, partial:boolean, time:integer}|{pending:true}>
+
+local function human(n)
+    local units = { 'B', 'K', 'M', 'G', 'T' }
+    local i = 1
+    while n >= 1024 and i < #units do
+        n, i = n / 1024, i + 1
+    end
+    return i == 1 and (n .. 'B') or string.format('%.1f%s', n, units[i])
+end
+
+-- Recursive size of `root` without blocking: every scandir/lstat is an async
+-- libuv request, `pending` counts the ones in flight, and the walk is done when
+-- it drops back to 0. Symlinks are not followed (avoids cycles).
+local function dir_size_async(root, on_done)
+    local total, seen, pending, partial, finished = 0, 0, 0, false, false
+    local function settle()
+        pending = pending - 1
+        if pending == 0 and not finished then
+            finished = true
+            on_done(total, partial)
+        end
+    end
+    local function walk(dir)
+        pending = pending + 1
+        uv.fs_scandir(dir, function(err, req)
+            while not err and req and not partial do
+                local name, kind = uv.fs_scandir_next(req)
+                if not name then break end
+                seen = seen + 1
+                if seen > MAX_WALK then
+                    partial = true
+                    break
+                end
+                local path = dir .. '/' .. name
+                if kind == 'directory' then
+                    walk(path)
+                elseif kind == 'file' then
+                    pending = pending + 1
+                    uv.fs_lstat(path, function(_, st)
+                        if st then total = total + st.size end
+                        settle()
+                    end)
+                end
+            end
+            settle()
+        end)
+    end
+    walk(root)
+end
+
+local function tree_dir_info(path)
+    local count = 0
+    local req = uv.fs_scandir(path)
+    while req and uv.fs_scandir_next(req) do count = count + 1 end
+    local out = count .. (count == 1 and ' item' or ' items')
+
+    local c = dir_sizes[path]
+    if c and c.size and uv.now() - c.time < CACHE_MS then
+        return out .. ' · ' .. (c.partial and '>=' or '') .. human(c.size)
+    end
+    if not (c and c.pending) then
+        dir_sizes[path] = { pending = true }
+        dir_size_async(path, vim.schedule_wrap(function(size, partial)
+            dir_sizes[path] = { size = size, partial = partial, time = uv.now() }
+            vim.cmd.redrawstatus()
+        end))
+    end
+    return out .. ' · …'
+end
+
+local function tree_node_info()
+    local ok, api = pcall(require, 'nvim-tree.api')
+    if not ok then return '' end
+    local node = api.tree.get_node_under_cursor()
+    if not node or not node.absolute_path or node.name == '..' then return '' end
+    local path = node.absolute_path
+    if node.type == 'directory' then return tree_dir_info(path) end
+    local st = uv.fs_lstat(path)
+    if not st then return '' end
+    if st.type == 'link' then
+        local target = uv.fs_readlink(path)
+        return target and ('-> ' .. vim.fn.fnamemodify(target, ':t')) or 'link'
+    end
+    return human(st.size) .. ' · ' .. os.date('%d %b %H:%M', st.mtime.sec)
+end
+
 -- Sidebar-like windows: show a label instead of file info, which is noise
 -- there and does not fit in ~30 columns anyway.
 local special = {
@@ -241,7 +338,14 @@ function M.render()
     if label then
         -- Mode as a single letter keeps its colour cue without eating the width
         local short = width < 40 and mode:sub(1, 1) or mode
-        return '%#StlA_' .. fam .. '# ' .. short .. ' %#StlC#%< ' .. label
+        local a = '%#StlA_' .. fam .. '# ' .. short .. ' %#StlC#%< '
+        if vim.bo[buf].filetype == 'NvimTree' then
+            -- The hovered item's info replaces the label when there is one;
+            -- both don't fit in the tree's width
+            local info = tree_node_info()
+            if info ~= '' then return a .. esc(info) end
+        end
+        return a .. label
     end
 
     local a = '%#StlA_' .. fam .. '# ' .. mode .. ' '
@@ -313,6 +417,20 @@ function M.setup()
         group = group,
         pattern = 'GitSignsUpdate',
         callback = function() vim.cmd.redrawstatus() end,
+    })
+    -- nvim-tree: hovered item changes with the cursor
+    vim.api.nvim_create_autocmd('FileType', {
+        group = group,
+        pattern = 'NvimTree',
+        callback = function(ev)
+            if vim.b[ev.buf].stl_hover then return end
+            vim.b[ev.buf].stl_hover = true
+            vim.api.nvim_create_autocmd('CursorMoved', {
+                group = group,
+                buffer = ev.buf,
+                callback = function() vim.cmd.redrawstatus() end,
+            })
+        end,
     })
 end
 
