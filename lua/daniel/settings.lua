@@ -77,6 +77,25 @@ vim.api.nvim_create_user_command("PackUpdate", function()
     vim.pack.update()
 end, { desc = "Update installed packages" })
 
+-- vim.pack never deletes a plugin just because its spec left vim.pack.add():
+-- it stays on disk and in nvim-pack-lock.json, and any lockfile entry that is
+-- missing on disk gets (re)installed on startup. :PackClean deletes every
+-- managed plugin not added in this session, which also drops its lock entry.
+vim.api.nvim_create_user_command("PackClean", function()
+    local stale = {}
+    for _, p in ipairs(vim.pack.get(nil, { info = false })) do
+        if not p.active then stale[#stale + 1] = p.spec.name end
+    end
+    if #stale == 0 then
+        vim.notify("vim.pack: nothing to clean")
+        return
+    end
+    local msg = "Delete inactive plugins?\n  " .. table.concat(stale, "\n  ")
+    if vim.fn.confirm(msg, "&Yes\n&No", 2) == 1 then
+        vim.pack.del(stale)
+    end
+end, { desc = "Delete plugins no longer in vim.pack.add()" })
+
 -- Folding configuration
 vim.o.foldenable = true
 vim.o.foldlevel = 99
