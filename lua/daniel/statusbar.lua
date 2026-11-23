@@ -204,27 +204,59 @@ local function progress(win, buf)
     return string.format('%2d%%%%', math.floor(line / total * 100))
 end
 
+-- Sidebar-like windows: show a label instead of file info, which is noise
+-- there and does not fit in ~30 columns anyway.
+local special = {
+    NvimTree = '󰉋 Files',
+    ['nvim-undotree'] = '󰕌 Undo tree',
+    qf = '󰁨 Quickfix',
+    help = '󰋖 Help',
+    ['dapui_scopes'] = 'Scopes', ['dapui_breakpoints'] = 'Breakpoints',
+    ['dapui_stacks'] = 'Stacks', ['dapui_watches'] = 'Watches',
+    ['dap-repl'] = 'REPL', ['dapui_console'] = 'Console',
+}
+
+-- Window widths below which lower-priority parts are dropped
+local W_FULL = 100 -- everything
+local W_MID = 70   -- drop encoding/filetype and LSP progress
+local W_MIN = 45   -- drop branch/diff and Top/Bot; mode, file, position stay
+
 function M.render()
     local win = vim.g.statusline_winid
     local buf = vim.api.nvim_win_get_buf(win)
+    local width = vim.api.nvim_win_get_width(win)
+    local active = win == vim.api.nvim_get_current_win()
+    local label = special[vim.bo[buf].filetype]
 
-    if win ~= vim.api.nvim_get_current_win() then
+    if not active then
+        if label then return '%#StlInactive# ' .. label end
         -- Inactive window: filename ... location
-        return '%#StlInactive# ' .. filename(buf) .. '%=%3l:%-2v '
+        return '%#StlInactive#%< ' .. filename(buf) .. '%=%3l:%-2v '
     end
 
     local m = vim.api.nvim_get_mode().mode
     local fam = mode_family(m)
-    local a = '%#StlA_' .. fam .. '# ' .. (mode_names[m] or m:upper()) .. ' '
-    local b = join({ branch(buf), diff(buf), esc(progress_text()) }, CSEP)
+    local mode = mode_names[m] or m:upper()
+
+    if label then
+        -- Mode as a single letter keeps its colour cue without eating the width
+        local short = width < 40 and mode:sub(1, 1) or mode
+        return '%#StlA_' .. fam .. '# ' .. short .. ' %#StlC#%< ' .. label
+    end
+
+    local a = '%#StlA_' .. fam .. '# ' .. mode .. ' '
+    local b = width >= W_MIN
+        and join({ branch(buf), diff(buf), width >= W_MID and esc(progress_text()) or '' }, CSEP) or ''
     local c = join({ diagnostics(buf), filename(buf) }, CSEP)
-    local x = join({ encoding(buf), filetype(buf) }, CSEP)
-    local y = progress(win, buf)
+    local x = width >= W_FULL and join({ encoding(buf), filetype(buf) }, CSEP) or ''
     local z = '%3l:%-2v'
 
     local left = a .. (b ~= '' and ('%#StlB# ' .. b .. ' ') or '')
-    local right = '%#StlB# ' .. y .. ' %#StlA_' .. fam .. '# ' .. z .. ' '
-    return left .. '%#StlC# ' .. c .. '%=' .. x .. ' ' .. right
+    local right = (width >= W_MIN and ('%#StlB# ' .. progress(win, buf) .. ' ') or '')
+        .. '%#StlA_' .. fam .. '# ' .. z .. ' '
+    -- %< truncates the file section first if it still overflows, so the mode
+    -- block and the cursor position are the last things to go
+    return left .. '%#StlC#%< ' .. c .. '%=' .. (x ~= '' and (x .. ' ') or '') .. right
 end
 
 function M.setup()
