@@ -121,6 +121,50 @@ end
 -- 2. Long-message viewer — float for messages > threshold
 -----------------------------------------------------------
 
+-- Read-only float for a block of text; q / <Esc> / <CR> close it.
+-- Returns the window so callers can move the cursor (e.g. to the end).
+local function open_text_float(lines, title)
+    local max_line = 0
+    for _, line in ipairs(lines) do
+        max_line = math.max(max_line, vim.fn.strdisplaywidth(line))
+    end
+    local width = math.min(math.max(max_line + 2, 40), math.floor(vim.o.columns * 0.8))
+    local height = math.max(1, math.min(#lines, math.floor(vim.o.lines * 0.7)))
+
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+    vim.bo[buf].modifiable = false
+    vim.bo[buf].bufhidden = 'wipe'
+
+    local win = vim.api.nvim_open_win(buf, true, {
+        relative = 'editor',
+        width = width,
+        height = height,
+        row = math.floor((vim.o.lines - height) / 2),
+        col = math.floor((vim.o.columns - width) / 2),
+        style = 'minimal',
+        border = 'rounded',
+        title = title,
+        title_pos = 'center',
+    })
+    vim.wo[win].wrap = true
+
+    local closed = false
+    local function close_win()
+        if closed then return end
+        closed = true
+        if vim.api.nvim_win_is_valid(win) then
+            vim.api.nvim_win_close(win, true)
+        end
+    end
+    local map_opts = { buffer = buf, nowait = true, noremap = true, silent = true }
+    vim.keymap.set('n', 'q', close_win, map_opts)
+    vim.keymap.set('n', '<Esc>', close_win, map_opts)
+    vim.keymap.set('n', '<CR>', close_win, map_opts)
+    vim.api.nvim_create_autocmd('WinLeave', { buffer = buf, once = true, callback = close_win })
+    return win
+end
+
 local original_notify = vim.notify
 local MSG_LINE_THRESHOLD = 3
 
@@ -138,20 +182,6 @@ vim.notify = function(msg, level, notify_opts)
     end
 
     -- Show long message in a floating window
-    local msg_lines = vim.split(msg, "\n")
-    local max_line = 0
-    for _, line in ipairs(msg_lines) do
-        max_line = math.max(max_line, #line)
-    end
-
-    local width = math.min(math.max(max_line + 2, 40), math.floor(vim.o.columns * 0.8))
-    local height = math.min(#msg_lines, math.floor(vim.o.lines * 0.7))
-
-    local buf = vim.api.nvim_create_buf(false, true)
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, msg_lines)
-    vim.api.nvim_set_option_value('modifiable', false, { buf = buf })
-    vim.api.nvim_set_option_value('bufhidden', 'wipe', { buf = buf })
-
     local level_titles = {
         [vim.log.levels.ERROR] = " Error ",
         [vim.log.levels.WARN] = " Warning ",
@@ -161,36 +191,26 @@ vim.notify = function(msg, level, notify_opts)
     }
     local title = level_titles[level] or " Message "
 
-    local win = vim.api.nvim_open_win(buf, true, {
-        relative = 'editor',
-        width = width,
-        height = height,
-        row = math.floor((vim.o.lines - height) / 2),
-        col = math.floor((vim.o.columns - width) / 2),
-        style = 'minimal',
-        border = 'rounded',
-        title = title,
-        title_pos = 'center',
-    })
-    vim.wo[win].wrap = true
-
-    local map_opts = { buffer = buf, nowait = true, noremap = true, silent = true }
-    local closed = false
-    local function close_win()
-        if closed then return end
-        closed = true
-        if vim.api.nvim_win_is_valid(win) then
-            vim.api.nvim_win_close(win, true)
-        end
-    end
-
-    vim.keymap.set('n', 'q', close_win, map_opts)
-    vim.keymap.set('n', '<Esc>', close_win, map_opts)
-    vim.keymap.set('n', '<CR>', close_win, map_opts)
-
-    vim.api.nvim_create_autocmd('WinLeave', {
-        buffer = buf,
-        once = true,
-        callback = close_win,
-    })
+    open_text_float(vim.split(msg, "\n"), title)
 end
+
+-----------------------------------------------------------
+-- 3. Message history — :messages in a scrollable float
+-----------------------------------------------------------
+-- The area under the statusline only ever shows the latest message and is
+-- cleared whenever it is redrawn (e.g. when 'cmdheight' changes). Everything
+-- shown there is kept in the history that :messages prints; this puts it in a
+-- normal buffer so it can be scrolled, searched and yanked.
+
+local function show_messages()
+    local out = vim.api.nvim_exec2('messages', { output = true }).output
+    if out == '' then
+        vim.notify('No messages')
+        return
+    end
+    local win = open_text_float(vim.split(out, '\n'), ' Messages ')
+    vim.api.nvim_win_set_cursor(win, { vim.api.nvim_buf_line_count(vim.api.nvim_win_get_buf(win)), 0 })
+end
+
+vim.api.nvim_create_user_command('Messages', show_messages, { desc = 'Message history in a float' })
+vim.keymap.set('n', '<leader>sm', show_messages, { desc = '[S]earch [M]essage history' })

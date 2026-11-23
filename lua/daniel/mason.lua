@@ -13,6 +13,9 @@ local ensure_installed = {
     ["css-lsp"]             = "vscode-css-language-server", -- cssls
     ["texlab"]              = "texlab",              -- texlab
     ["ty"]                  = "ty",                  -- ty
+    -- Not an LSP: nvim-treesitter (main) shells out to `tree-sitter build`
+    -- to compile parsers. Installing it here makes that work on every OS.
+    ["tree-sitter-cli"]     = "tree-sitter",
 }
 
 -- Install the given packages (refreshes the registry once, asynchronously)

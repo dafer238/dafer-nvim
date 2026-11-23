@@ -17,19 +17,39 @@ local parsers = {
     "python", "regex", "rust", "toml", "typescript", "zig", "gitignore",
 }
 
+local function missing_parsers()
+    local missing = {}
+    for _, lang in ipairs(parsers) do
+        if #vim.api.nvim_get_runtime_file("parser/" .. lang .. ".*", false) == 0 then
+            missing[#missing + 1] = lang
+        end
+    end
+    return missing
+end
+
+local function install_missing()
+    local missing = missing_parsers()
+    if #missing > 0 then
+        require("nvim-treesitter").install(missing)
+    end
+end
+
 -- Install only what is missing, after startup, so launch is never blocked.
+-- Without the tree-sitter CLI every parser fails with "ENOENT ... 'tree-sitter'",
+-- so wait for Mason (see mason.lua) to install it and continue from there.
 vim.api.nvim_create_autocmd("VimEnter", {
     once = true,
     callback = function()
-        local missing = {}
-        for _, lang in ipairs(parsers) do
-            if #vim.api.nvim_get_runtime_file("parser/" .. lang .. ".*", false) == 0 then
-                missing[#missing + 1] = lang
-            end
+        if #missing_parsers() == 0 then return end
+        if vim.fn.executable("tree-sitter") == 1 then
+            install_missing()
+            return
         end
-        if #missing > 0 then
-            require("nvim-treesitter").install(missing)
-        end
+        vim.notify("treesitter: waiting for Mason to install tree-sitter-cli before compiling parsers",
+            vim.log.levels.WARN)
+        require("mason-registry"):on("package:install:success", vim.schedule_wrap(function(pkg)
+            if pkg.name == "tree-sitter-cli" then install_missing() end
+        end))
     end,
 })
 
