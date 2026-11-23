@@ -210,19 +210,33 @@ end
 --   link:      -> target
 -- A folder's total size needs a full recursive walk, which can be slow on big
 -- trees (and on Windows in general), so it runs asynchronously with libuv,
--- stops after MAX_WALK entries (shown as ">=") and is cached for CACHE_MS.
+-- stops after MAX_WALK entries (shown as "≥") and is cached for CACHE_MS.
 local uv = vim.uv
 local MAX_WALK = 50000
 local CACHE_MS = 60000
 local dir_sizes = {} ---@type table<string, {size:integer, partial:boolean, time:integer}|{pending:true}>
 
+-- Size in at most 4 characters, like `ls -h`: one decimal below 10, whole
+-- numbers above, and the next unit from 1000 up (999K -> 1.0M).
+-- Together with a 1-cell prefix ('≥' or ' ') the size field is always 5 cells
+-- wide, so the ' · ' after it never moves while a folder size is computed.
+local SIZE_W = 5
+
 local function human(n)
     local units = { 'B', 'K', 'M', 'G', 'T' }
     local i = 1
-    while n >= 1024 and i < #units do
+    while n >= 999.5 and i < #units do -- 999.5 would round to "1000"
         n, i = n / 1024, i + 1
     end
-    return i == 1 and (n .. 'B') or string.format('%.1f%s', n, units[i])
+    if i == 1 then return string.format('%d%s', n, units[i]) end
+    if n < 9.95 then return string.format('%.1f%s', n, units[i]) end
+    return string.format('%d%s', math.floor(n + 0.5), units[i])
+end
+
+-- Right-align by display cells; string.format('%5s') counts bytes and
+-- '≥'/'…' are 3 bytes each
+local function size_field(text)
+    return string.rep(' ', math.max(0, SIZE_W - vim.fn.strdisplaywidth(text))) .. text
 end
 
 -- Recursive size of `root` without blocking: every scandir/lstat is an async
@@ -273,7 +287,7 @@ local function tree_dir_info(path)
 
     local c = dir_sizes[path]
     if c and c.size and uv.now() - c.time < CACHE_MS then
-        return (c.partial and '>=' or '') .. human(c.size) .. ' · ' .. items
+        return size_field((c.partial and '≥' or '') .. human(c.size)) .. ' · ' .. items
     end
     if not (c and c.pending) then
         dir_sizes[path] = { pending = true }
@@ -282,7 +296,7 @@ local function tree_dir_info(path)
             vim.cmd.redrawstatus()
         end))
     end
-    return '… · ' .. items
+    return size_field('…') .. ' · ' .. items
 end
 
 local function tree_node_info()
@@ -298,7 +312,7 @@ local function tree_node_info()
         local target = uv.fs_readlink(path)
         return target and ('-> ' .. vim.fn.fnamemodify(target, ':t')) or 'link'
     end
-    return human(st.size) .. ' · ' .. os.date('%d %b %H:%M', st.mtime.sec)
+    return size_field(human(st.size)) .. ' · ' .. os.date('%d %b %H:%M', st.mtime.sec)
 end
 
 -- Sidebar-like windows: show a label instead of file info, which is noise
